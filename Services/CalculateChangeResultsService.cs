@@ -24,16 +24,27 @@ public class GenerateChangeResultsService : IGenerateChangeResultsService
     public void GenerateResultsCsvForDates(DateTime startDate, DateTime endDate, int agencyId)
     {
         TimeSpan daysSpan = endDate - startDate;
+        
+        // This variable stores the total number of days between between the given dates. 
         int numDays = (int)daysSpan.TotalDays + 1;
         List<ChangeResult> results = new List<ChangeResult>();
+        
         Dictionary<int, List<Flight>>[] arrayOfDictionaries = new Dictionary<int, List<Flight>>[numDays];
         
         for (int i = 0; i < numDays; i++)
         {
             arrayOfDictionaries[i] = new Dictionary<int, List<Flight>>();
         }
-        
+        /*
+         * This is the segments in which the given agency is subscriber to.
+         * A segment is a unique pair of origin and destination.
+         */
         var segments = GetSegmentsForAnAgency(agencyId);
+        
+        /*
+         * This is the flights between the dates that belong to the specified segments.
+         * We also filter out the flights that belong to the same airline agency
+         */
         var flights = _flightRepository.GetAllFlightsBetweenDates(startDate, endDate, agencyId, segments);
         for (int i = 0; i < flights.Count; i++)
         {
@@ -185,7 +196,7 @@ public class GenerateChangeResultsService : IGenerateChangeResultsService
                 }
             }
         }
-
+        // Change result is one row of the results.csv file
         return new ChangeResult(flight.FlightId,
             flight.Route.OriginCityId,
             flight.Route.DestinationCityId,

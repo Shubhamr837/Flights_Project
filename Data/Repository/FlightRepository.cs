@@ -21,7 +21,11 @@ public class FlightRepository : IFlightRepository
     {
         return _context.Set<Flight>().Find(flightId);
     }
-    
+    /*
+     * Get the list of flights between provide dates.
+     * Filter out flights that dont belong to the specified segments
+     * Also filter out the flights that belong to the specified agency
+     */
     public List<Flight> GetAllFlightsBetweenDates(DateTime startDate, DateTime endDate, int agencyId, List<int> segmentIdList)
     {
         var flights = _context.flights

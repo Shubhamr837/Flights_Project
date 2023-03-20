@@ -10,6 +10,10 @@ public class MigrationUtils
     private static Dictionary<KeyValuePair<int, int>, int> segments = new();
     private static int segment_count = 0;
  
+    /*
+     * Function to create the table if tables doesn't exists
+     * 
+     */
     private static async void CreateTables(NpgsqlConnection connection)
     {
         connection.Open();
@@ -43,12 +47,12 @@ public class MigrationUtils
         var connection = new NpgsqlConnection(connectionString);
         CreateTables(connection);
 
-        createRoutesTable(csvFilesPath+"routes.csv",connectionString);
-        createSubscriptionsTable(csvFilesPath+"subscriptions.csv",connectionString);
-        createFlightsTable(csvFilesPath+"flights.csv",connectionString);
+        PopulateRoutesTable(csvFilesPath+"routes.csv",connectionString);
+        PopulateSubscriptionsTable(csvFilesPath+"subscriptions.csv",connectionString);
+        PopulateFlightsTable(csvFilesPath+"flights.csv",connectionString);
     }
 
-    public static async void createFlightsTable(string pathToCSV,string connectionString)
+    public static async void PopulateFlightsTable(string pathToCSV,string connectionString)
     {
         try
         {
@@ -118,7 +122,7 @@ public class MigrationUtils
         }
     }
     
-    private static async void createRoutesTable(String pathToCSV,String connectionString)
+    private static async void PopulateRoutesTable(String pathToCSV,String connectionString)
     {
         try
         {
@@ -179,7 +183,7 @@ public class MigrationUtils
         }
     }
     
-    public static async void createSubscriptionsTable(String pathToCSV,String connectionString)
+    public static async void PopulateSubscriptionsTable(String pathToCSV,String connectionString)
     {
         try
         {
