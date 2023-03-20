@@ -133,12 +133,12 @@ public class GenerateChangeResultsService : IGenerateChangeResultsService
     {
         /*
          * If the departure time is in the second half of the hour then for 30 minute
-         * tolerance we need to look at data for that hour and the next hour
-         * Else we need to look at data for that hour and the previous hour
+         * tolerance we need to look at 7 days back data for that hour and the next hour
+         * Else we need to look at 7 days back data for that hour and the previous hour
          *
          * Both cases we have to look at data for the same hour.
          * So we first loop through the same hour and then for the corresponding
-         * next or previous hour.
+         * next or previous hour 7 days back.
          */
 
         if (offsetHour != null)
@@ -147,7 +147,8 @@ public class GenerateChangeResultsService : IGenerateChangeResultsService
             {
                 TimeSpan timeDiff = (flight.DepartureTime - offsetFlight.DepartureTime).Duration();
                 
-                if ((timeDiff.TotalMinutes+(offset*24*60)) < 30 && flight.AirlineId == offsetFlight.AirlineId &&
+                // Adding (offset*24*60) to remove the time difference of 7 days and check if time difference is less than 30 minutes
+                if (Math.Abs(timeDiff.TotalMinutes+(offset*24*60)) < 30 && flight.AirlineId == offsetFlight.AirlineId &&
                     flight.Route.SegmentId == offsetFlight.Route.SegmentId)
                 {
                     /*
@@ -167,7 +168,7 @@ public class GenerateChangeResultsService : IGenerateChangeResultsService
                 foreach( var offsetFlight in offsetNextHour)
                 {
                     TimeSpan timeDiff = (flight.DepartureTime - offsetFlight.DepartureTime).Duration();
-                    if ((timeDiff.TotalMinutes+(offset*24*60)) < 30 && flight.AirlineId == offsetFlight.AirlineId && flight.Route.SegmentId == offsetFlight.Route.SegmentId)
+                    if (Math.Abs(timeDiff.TotalMinutes+(offset*24*60)) < 30 && flight.AirlineId == offsetFlight.AirlineId && flight.Route.SegmentId == offsetFlight.Route.SegmentId)
                     {
                         /*
                          * As the corresponding flight is found we invalidate the data by setting it to DateTime.MinValue
@@ -184,7 +185,7 @@ public class GenerateChangeResultsService : IGenerateChangeResultsService
             foreach( var offsetFlight in offsetPreviousHour)
             {
                 TimeSpan timeDiff = (flight.DepartureTime - offsetFlight.DepartureTime).Duration();
-                if ((timeDiff.TotalMinutes+(offset*24*60)) < 30 && flight.AirlineId == offsetFlight.AirlineId && flight.Route.SegmentId == offsetFlight.Route.SegmentId)
+                if (Math.Abs(timeDiff.TotalMinutes+(offset*24*60)) < 30 && flight.AirlineId == offsetFlight.AirlineId && flight.Route.SegmentId == offsetFlight.Route.SegmentId)
                 {
                     /*
                      * As the corresponding flight is found we invalidate the data by setting it to DateTime.MinValue
@@ -206,6 +207,10 @@ public class GenerateChangeResultsService : IGenerateChangeResultsService
             offset>0?ChangeResult.Status.DISCONTINUED:ChangeResult.Status.NEW);
             
     }
+    
+    /*
+     * This function takes the list of rows to be added to the results.csv file and adds them accordingly
+     */
     public void WriteResultsToCsv(List<ChangeResult> results)
     {
         try
