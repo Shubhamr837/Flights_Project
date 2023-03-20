@@ -5,12 +5,12 @@ using CsvHelper;
 
 namespace Flights_Project.Services;
 
-public class GenerateChangeResultsService : IGenerateChangeResultsService
+public class CalculateChangeResultsService : IGenerateChangeResultsService
 {
     private readonly IFlightRepository _flightRepository;
     private readonly ISubscriptionRepository _subscriptionRepository;
 
-    public GenerateChangeResultsService(IFlightRepository flightRepository,ISubscriptionRepository subscriptionRepository)
+    public CalculateChangeResultsService(IFlightRepository flightRepository,ISubscriptionRepository subscriptionRepository)
     {
         _flightRepository = flightRepository;
         _subscriptionRepository = subscriptionRepository;

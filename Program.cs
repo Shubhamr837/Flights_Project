@@ -45,7 +45,7 @@ internal class Program
                     .AddSingleton<IRouteRepository,RouteRepository>()
                     .AddSingleton<IFlightRepository, FlightRepository>()
                     .AddSingleton<ISubscriptionRepository,SubscriptionRepository>()
-                    .AddSingleton<IGenerateChangeResultsService,GenerateChangeResultsService>()
+                    .AddSingleton<IGenerateChangeResultsService,CalculateChangeResultsService>()
                     .BuildServiceProvider();
 
                 using var scope = serviceProvider.CreateScope();
