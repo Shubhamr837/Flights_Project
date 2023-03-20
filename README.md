@@ -32,6 +32,7 @@ Subscriptions	agency_id	          INTEGER
               segment_id(FK)      INTEGER	
 
 - Overall structure of the application (layers, data flow, dependencies, (de)coupling)
+
 To access data from database I have implemented an entity for all the tables. Each table also has a repository to be accessed by other classes in the application. There is a database context class implemented to be used by the repositories of all the entities.
 The application has 2 functionalities :
 1.  To Calculate the change in flight schedule
