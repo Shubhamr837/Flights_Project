@@ -19,6 +19,7 @@ Databases with key and types :
 To access data from database I have implemented an entity for all the tables. Each table also has a repository to be accessed by other classes in the application. There is a database context class implemented to be used by the repositories of all the entities.
 The application has 2 functionalities :
 1.  To Calculate the change in flight schedule
+
 For this we have a CalculateChangeResults Service with an interface.
 The class CalculateChangeResultsService requires 2 arguments in constructor (FlightRepository and SubscriptionsRepository) . We use dependency injection provided by .net for creating an instance of the class. All the repositories are added to the dependency injection container.
 
