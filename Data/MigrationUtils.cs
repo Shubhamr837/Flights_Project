@@ -8,7 +8,7 @@ public class MigrationUtils
         "UPDATE Flights SET segment_id = routes.segment_id,  origin_city_id = routes.origin_city_id, destination_city_id = routes.destination_city_id FROM routes WHERE flights.route_id = routes.route_id;";
     
     private static Dictionary<KeyValuePair<int, int>, int> segments = new();
-    private static int segment_count = 0;
+    private static int _segmentCount = 0;
  
     /*
      * Function to create the table if tables doesn't exists
@@ -32,7 +32,7 @@ public class MigrationUtils
         KeyValuePair<int, int> originDestinationPair = new KeyValuePair<int, int>(origin_city_id,destination_city_id);
         if (!segments.ContainsKey(originDestinationPair))
         { 
-            segments.Add(originDestinationPair,segment_count++);
+            segments.Add(originDestinationPair,_segmentCount++);
         }
         return segments[originDestinationPair]; 
     }
