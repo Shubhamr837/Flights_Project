@@ -12,6 +12,7 @@ As we need to find the segments in which an airline is intrested in, segment_id 
 I created another table named Segments which holds the segments data. Both the Routes and Subscriptions table refer to the Segments table for foreign key segment_id.
 
 Databases with key and types : 
+
  Table_Name	  Field_Name	         Data_Type	Primary_Key
  Routes	      route_id	           INTEGER	  Yes
               origin_city_id	     INTEGER	
