@@ -13,25 +13,7 @@ I created another table named Segments which holds the segments data. Both the R
 
 Databases with key and types : 
 
- Table_Name	  Field_Name	         Data_Type	Primary_Key
- Routes	      route_id	           INTEGER	  Yes
-              origin_city_id	     INTEGER	
-              destination_city_id	INTEGER	
-              departure_date	     TIMESTAMP	
-              segment_id(FK)      INTEGER	
- Flights	     flight_id	          INTEGER	  Yes
-              route_id(FK)        INTEGER	
-              departure_time	     TIMESTAMP	
-              arrival_time	       TIMESTAMP	
-              airline_id         	INTEGER	
-Segments	     segment_id	         INTEGER	  Yes
-              origin_city_id	     INTEGER	
-              destination_city_id	INTEGER	
-Subscriptions	agency_id	          INTEGER	
-              origin_city_id	     INTEGER	
-              destination_city_id	INTEGER	
-              segment_id(FK)      INTEGER	
-
+![image](https://user-images.githubusercontent.com/45128519/226363231-352c8e79-0905-4f85-bf8c-fc0cd1045b56.png)
 - Overall structure of the application (layers, data flow, dependencies, (de)coupling)
 
 To access data from database I have implemented an entity for all the tables. Each table also has a repository to be accessed by other classes in the application. There is a database context class implemented to be used by the repositories of all the entities.
