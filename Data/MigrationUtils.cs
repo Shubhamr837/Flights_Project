@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Flights_Project.Models;
 using Npgsql;
 
@@ -27,11 +28,36 @@ public class MigrationUtils
         var connection = new NpgsqlConnection(connectionString);
         CreateTables(connection);
 
+        
+        var stopwatch = new Stopwatch();
+
+        stopwatch.Start();
         PopulateRouteTable(csvFilesPath+"routes.csv",connectionString);
+        stopwatch.Stop();
+        Console.WriteLine("PopulateRouteTable Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
+
+        stopwatch.Reset();
+
         var segmentsList = ConvertToSegments(segments);
+        stopwatch.Start();
         PopulateSegmentTable(segmentsList,connectionString);
+        stopwatch.Stop();
+        Console.WriteLine("PopulateSegmentTable Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
+
+        stopwatch.Reset();
+
+        stopwatch.Start();
         PopulateSubscriptionTable(csvFilesPath+"subscriptions.csv",connectionString);
+        stopwatch.Stop();
+        Console.WriteLine("PopulateSubscriptionTable Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
+
+        stopwatch.Reset();
+
+        stopwatch.Start();
         PopulateFlightTable(csvFilesPath+"flights.csv",connectionString);
+        stopwatch.Stop();
+        Console.WriteLine("PopulateFlightTable Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
+
         AddForeignKeyConstraintToRoutesTable(connectionString);
     }
     
@@ -44,10 +70,10 @@ public class MigrationUtils
         await using NpgsqlCommand createRoutesTableCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Routes (route_id INTEGER PRIMARY KEY,origin_city_id INTEGER,destination_city_id INTEGER,departure_date TIMESTAMP, segment_id INTEGER);", connection);
         await createRoutesTableCommand.ExecuteNonQueryAsync();
                 
-        await using NpgsqlCommand createFlightsCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Flights (flight_id INTEGER PRIMARY KEY,route_id INTEGER,departure_time TIMESTAMP,arrival_time TIMESTAMP,airline_id INTEGER);", connection);
+        await using NpgsqlCommand createFlightsCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Flights (flight_id INTEGER PRIMARY KEY,route_id INTEGER,departure_time TIMESTAMP,arrival_time TIMESTAMP,airline_id INTEGER, FOREIGN KEY (route_id) REFERENCES Routes(route_id));", connection);
         await createFlightsCommand.ExecuteNonQueryAsync();
 
-        await using NpgsqlCommand createSegmentTableCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Segments (segment_id INTEGER ,origin_city_id INTEGER,destination_city_id INTEGER);", connection);
+        await using NpgsqlCommand createSegmentTableCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Segments (segment_id INTEGER PRIMARY KEY ,origin_city_id INTEGER,destination_city_id INTEGER);", connection);
         await createSegmentTableCommand.ExecuteNonQueryAsync();
         
         await using NpgsqlCommand createSubscriptionTableCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Subscriptions (agency_id INTEGER ,origin_city_id INTEGER,destination_city_id INTEGER, segment_id INTEGER, FOREIGN KEY (segment_id) REFERENCES Segments(segment_id));", connection);
@@ -70,7 +96,7 @@ public class MigrationUtils
             KeyValuePair<int, int> key = entry.Key;
             int value = entry.Value;
             Segment segment = new Segment {
-                SegmentId = key.Value,
+                SegmentId = value,
                 OriginCityId = key.Key,
                 DestinationCityId = key.Value
             };

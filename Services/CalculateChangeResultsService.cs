@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Flights_Project.Data.Repository;
 using Flights_Project.Models;
 
@@ -5,7 +6,7 @@ using CsvHelper;
 
 namespace Flights_Project.Services;
 
-public class CalculateChangeResultsService : IGenerateChangeResultsService
+public class CalculateChangeResultsService : ICalculateChangeResultsService
 {
     private readonly IFlightRepository _flightRepository;
     private readonly ISubscriptionRepository _subscriptionRepository;
@@ -18,8 +19,8 @@ public class CalculateChangeResultsService : IGenerateChangeResultsService
 
     private List<int> GetSegmentsForAnAgency(int agencyId)
     {
-         var subscriptions = _subscriptionRepository.GetSegmentsForAgency(agencyId);
-         return subscriptions.ToList();
+        var subscriptions = _subscriptionRepository.GetSegmentsForAgency(agencyId);
+        return subscriptions.ToList();
     }
     public void GenerateResultsCsvForDates(DateTime startDate, DateTime endDate, int agencyId)
     {
@@ -29,39 +30,49 @@ public class CalculateChangeResultsService : IGenerateChangeResultsService
         int numDays = (int)daysSpan.TotalDays + 1;
         List<ChangeResult> results = new List<ChangeResult>();
         
-        Dictionary<int, List<Flight>>[] arrayOfDictionaries = new Dictionary<int, List<Flight>>[numDays];
+        Dictionary<int, List<Flight>>[] flightHistory = new Dictionary<int, List<Flight>>[numDays];
         
         for (int i = 0; i < numDays; i++)
         {
-            arrayOfDictionaries[i] = new Dictionary<int, List<Flight>>();
+            flightHistory[i] = new Dictionary<int, List<Flight>>();
         }
         /*
          * This is the segments in which the given agency is subscriber to.
          * A segment is a unique pair of origin and destination.
          */
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
         var segments = GetSegmentsForAnAgency(agencyId);
-        
+        stopwatch.Stop();
+        Console.WriteLine("GetSegmentsForAnAgency Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
+
         /*
          * This is the flights between the dates that belong to the specified segments.
          * We also filter out the flights that belong to the same airline agency
          */
+        stopwatch.Reset();
+        stopwatch.Start();
         var flights = _flightRepository.GetAllFlightsBetweenDates(startDate, endDate, agencyId, segments);
+        stopwatch.Stop();
+        Console.WriteLine("GetAllFlightsBetweenDates Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
+
         for (int i = 0; i < flights.Count; i++)
         {
             Flight flight = flights[i];
             TimeSpan span = flight.DepartureTime - startDate;
             int day = (int)span.TotalDays;
             
-            if(!arrayOfDictionaries[day].ContainsKey(flight.DepartureTime.Hour))
+            if(!flightHistory[day].ContainsKey(flight.DepartureTime.Hour))
             {
                 List<Flight> flightsInDay = new List<Flight>();
-                arrayOfDictionaries[day].Add(flight.DepartureTime.Hour,flightsInDay);
+                flightHistory[day].Add(flight.DepartureTime.Hour,flightsInDay);
             }
-            arrayOfDictionaries[day][flight.DepartureTime.Hour].Add(flight);
+            flightHistory[day][flight.DepartureTime.Hour].Add(flight);
         }
 
         /*
-         * 
+         * Loop through the flights list and for every flight look 7 days back in the FlightHistory dictionary to check if its a new Flight.
+         * Look 7 days forward in the FlightHistory dictionary to check if flight is discontinued.
          */
         for (int i = 0; i < flights.Count; i++)
         {
@@ -78,16 +89,16 @@ public class CalculateChangeResultsService : IGenerateChangeResultsService
                 int offsetDay = day - 7;
                 List<Flight>? offsetNextHour = null;
                 List<Flight>? offsetPreviousHour =  null;
-                if (flight.DepartureTime.Hour == 23 && arrayOfDictionaries[offsetDay+1].ContainsKey(0))
+                if (flight.DepartureTime.Hour == 23 && flightHistory[offsetDay+1].ContainsKey(0))
                 {
-                    offsetNextHour = arrayOfDictionaries[offsetDay + 1][0];
+                    offsetNextHour = flightHistory[offsetDay + 1][0];
                 }
-                if (flight.DepartureTime.Hour == 0 && offsetDay-1 >= 0 && arrayOfDictionaries[offsetDay-1].ContainsKey(23))
+                if (flight.DepartureTime.Hour == 0 && offsetDay-1 >= 0 && flightHistory[offsetDay-1].ContainsKey(23))
                 {
-                    offsetPreviousHour = arrayOfDictionaries[offsetDay - 1][23];
+                    offsetPreviousHour = flightHistory[offsetDay - 1][23];
                 }
 
-                ChangeResult? changeResult = calculateChangeStatus(flight,arrayOfDictionaries[offsetDay][flight.DepartureTime.Hour],
+                ChangeResult? changeResult = calculateChangeStatus(flight,flightHistory[offsetDay][flight.DepartureTime.Hour],
                     offsetNextHour, offsetPreviousHour, -offset);
                 if (changeResult != null)
                 {
@@ -98,24 +109,24 @@ public class CalculateChangeResultsService : IGenerateChangeResultsService
             /*
              * Discontinued Flights
              */
-            if (day + offset < arrayOfDictionaries.Length)
+            if (day + offset < flightHistory.Length)
             {
                 int offsetDay = day + 7;
                 List<Flight>? offsetNextHour = null;
                 List<Flight>? offsetPreviousHour =  null;
                 List<Flight>? offsetHour = null;
-                if (flight.DepartureTime.Hour == 23 && offsetDay+1<numDays && arrayOfDictionaries[offsetDay+1].ContainsKey(0))
+                if (flight.DepartureTime.Hour == 23 && offsetDay+1<numDays && flightHistory[offsetDay+1].ContainsKey(0))
                 {
-                    offsetNextHour = arrayOfDictionaries[offsetDay + 1][0];
+                    offsetNextHour = flightHistory[offsetDay + 1][0];
                 }
-                if (flight.DepartureTime.Hour == 0 && arrayOfDictionaries[offsetDay-1].ContainsKey(23))
+                if (flight.DepartureTime.Hour == 0 && flightHistory[offsetDay-1].ContainsKey(23))
                 {
-                    offsetPreviousHour = arrayOfDictionaries[offsetDay - 1][23];
+                    offsetPreviousHour = flightHistory[offsetDay - 1][23];
                 }
 
-                if (arrayOfDictionaries[offsetDay].ContainsKey(flight.DepartureTime.Hour))
+                if (flightHistory[offsetDay].ContainsKey(flight.DepartureTime.Hour))
                 {
-                    offsetHour = arrayOfDictionaries[offsetDay][flight.DepartureTime.Hour];
+                    offsetHour = flightHistory[offsetDay][flight.DepartureTime.Hour];
                 }
                 ChangeResult? changeResult = calculateChangeStatus(flight,offsetNextHour,
                     offsetNextHour, offsetPreviousHour, offset);
@@ -126,7 +137,12 @@ public class CalculateChangeResultsService : IGenerateChangeResultsService
             }
         }
         
+        stopwatch.Reset();
+        stopwatch.Start();
         WriteResultsToCsv(results);
+        stopwatch.Stop();
+        Console.WriteLine("WriteResultsToCsv Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
+
     }
 
     public ChangeResult? calculateChangeStatus(Flight flight, List<Flight>? offsetHour,List<Flight>? offsetNextHour,List<Flight>? offsetPreviousHour,int offset)

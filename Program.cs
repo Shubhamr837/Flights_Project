@@ -1,4 +1,5 @@
 ﻿
+using System.Diagnostics;
 using System.Globalization;
 using Flights_Project.Data;
 using Flights_Project.Data.Repository;
@@ -29,7 +30,11 @@ internal class Program
             
             if (args[0].ToLower().Equals("migrate"))
             {
+                var stopwatch = new Stopwatch();
+                stopwatch.Start();
                 MigrationUtils.ImportCSVToPostgreSQL(args[1],connectionString);
+                stopwatch.Stop();
+                Console.WriteLine("Migration Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
             }
             else if (DateTime.TryParseExact(args[0], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out startDate) 
                      && DateTime.TryParseExact(args[1], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out endDate)
@@ -45,12 +50,16 @@ internal class Program
                     .AddSingleton<IRouteRepository,RouteRepository>()
                     .AddSingleton<IFlightRepository, FlightRepository>()
                     .AddSingleton<ISubscriptionRepository,SubscriptionRepository>()
-                    .AddSingleton<IGenerateChangeResultsService,CalculateChangeResultsService>()
+                    .AddSingleton<ICalculateChangeResultsService,CalculateChangeResultsService>()
                     .BuildServiceProvider();
 
                 using var scope = serviceProvider.CreateScope();
-                var generateChangeResultsService = scope.ServiceProvider.GetService<IGenerateChangeResultsService>();
-                generateChangeResultsService.GenerateResultsCsvForDates(startDate,endDate,agencyId);
+                var calculateChangeResultsService = scope.ServiceProvider.GetService<ICalculateChangeResultsService>();
+                var stopwatch = new Stopwatch();
+                stopwatch.Start();
+                calculateChangeResultsService.GenerateResultsCsvForDates(startDate,endDate,agencyId);
+                stopwatch.Stop();
+                Console.WriteLine("Calculation of changed flights Task completed successfully in time :" + (double)stopwatch.ElapsedTicks / Stopwatch.Frequency +" Seconds");
             }
             else
             {

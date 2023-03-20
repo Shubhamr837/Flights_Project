@@ -1,6 +1,6 @@
 namespace Flights_Project.Services;
 
-public interface IGenerateChangeResultsService
+public interface ICalculateChangeResultsService
 {
     void GenerateResultsCsvForDates(DateTime startDate, DateTime endDate, int agencyId);
 }
