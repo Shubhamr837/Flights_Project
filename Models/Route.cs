@@ -19,5 +19,6 @@ public class Route
     [Column("segment_id")]
     public int SegmentId { get; set; }
     
+    public Segment Segment { get; set; }
     public List<Flight> Flights { get; set; }
 }

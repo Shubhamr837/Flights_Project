@@ -1,3 +1,4 @@
+using Flights_Project.Models;
 using Npgsql;
 
 namespace Flights_Project.Data;
@@ -11,8 +12,31 @@ public class MigrationUtils
     private static int _segmentCount = 0;
  
     /*
+     * Function that populates the data from the csv files path.
+     * It expects the csv files path to be a folder containing all the required CSV files.
+     * It calls the populate functions in the required order to maintain all foreign key constrains
+     */
+    public static void ImportCSVToPostgreSQL(string csvFilesPath, string connectionString)
+    {
+        // Check if the CSV file exists
+        if (!File.Exists(csvFilesPath+ "routes.csv")||!File.Exists(csvFilesPath+ "flights.csv")||!File.Exists(csvFilesPath+ "subscriptions.csv"))
+        {
+            throw new ArgumentException("CSV file does not exist");
+        }
+        
+        var connection = new NpgsqlConnection(connectionString);
+        CreateTables(connection);
+
+        PopulateRouteTable(csvFilesPath+"routes.csv",connectionString);
+        var segmentsList = ConvertToSegments(segments);
+        PopulateSegmentTable(segmentsList,connectionString);
+        PopulateSubscriptionTable(csvFilesPath+"subscriptions.csv",connectionString);
+        PopulateFlightTable(csvFilesPath+"flights.csv",connectionString);
+        AddForeignKeyConstraintToRoutesTable(connectionString);
+    }
+    
+    /*
      * Function to create the table if tables doesn't exists
-     * 
      */
     private static async void CreateTables(NpgsqlConnection connection)
     {
@@ -20,10 +44,13 @@ public class MigrationUtils
         await using NpgsqlCommand createRoutesTableCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Routes (route_id INTEGER PRIMARY KEY,origin_city_id INTEGER,destination_city_id INTEGER,departure_date TIMESTAMP, segment_id INTEGER);", connection);
         await createRoutesTableCommand.ExecuteNonQueryAsync();
                 
-        await using NpgsqlCommand createFlightsCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Flights (flight_id INTEGER PRIMARY KEY,route_id INTEGER,departure_time TIMESTAMP,arrival_time TIMESTAMP,airline_id INTEGER, FOREIGN KEY (route_id) REFERENCES Routes(route_id));", connection);
+        await using NpgsqlCommand createFlightsCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Flights (flight_id INTEGER PRIMARY KEY,route_id INTEGER,departure_time TIMESTAMP,arrival_time TIMESTAMP,airline_id INTEGER);", connection);
         await createFlightsCommand.ExecuteNonQueryAsync();
 
-        await using NpgsqlCommand createSubscriptionTableCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Subscriptions (agency_id INTEGER ,origin_city_id INTEGER,destination_city_id INTEGER, segment_id INTEGER);", connection);
+        await using NpgsqlCommand createSegmentTableCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Segments (segment_id INTEGER ,origin_city_id INTEGER,destination_city_id INTEGER);", connection);
+        await createSegmentTableCommand.ExecuteNonQueryAsync();
+        
+        await using NpgsqlCommand createSubscriptionTableCommand = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS Subscriptions (agency_id INTEGER ,origin_city_id INTEGER,destination_city_id INTEGER, segment_id INTEGER, FOREIGN KEY (segment_id) REFERENCES Segments(segment_id));", connection);
         await createSubscriptionTableCommand.ExecuteNonQueryAsync();
     }
 
@@ -36,23 +63,22 @@ public class MigrationUtils
         }
         return segments[originDestinationPair]; 
     }
-    public static void ImportCSVToPostgreSQL(string csvFilesPath, string connectionString)
-    {
-        // Check if the CSV file exists
-        if (!File.Exists(csvFilesPath+ "routes.csv")||!File.Exists(csvFilesPath+ "flights.csv")||!File.Exists(csvFilesPath+ "subscriptions.csv"))
-        {
-            throw new ArgumentException("CSV file does not exist");
+    
+    public static List<Segment> ConvertToSegments(Dictionary<KeyValuePair<int, int>, int> segments) {
+        List<Segment> result = new List<Segment>();
+        foreach (var entry in segments) {
+            KeyValuePair<int, int> key = entry.Key;
+            int value = entry.Value;
+            Segment segment = new Segment {
+                SegmentId = key.Value,
+                OriginCityId = key.Key,
+                DestinationCityId = key.Value
+            };
+            result.Add(segment);
         }
-        
-        var connection = new NpgsqlConnection(connectionString);
-        CreateTables(connection);
-
-        PopulateRoutesTable(csvFilesPath+"routes.csv",connectionString);
-        PopulateSubscriptionsTable(csvFilesPath+"subscriptions.csv",connectionString);
-        PopulateFlightsTable(csvFilesPath+"flights.csv",connectionString);
+        return result;
     }
-
-    public static async void PopulateFlightsTable(string pathToCSV,string connectionString)
+    private static async void PopulateFlightTable(string pathToCSV,string connectionString)
     {
         try
         {
@@ -122,7 +148,7 @@ public class MigrationUtils
         }
     }
     
-    private static async void PopulateRoutesTable(String pathToCSV,String connectionString)
+    private static async void PopulateRouteTable(String pathToCSV,String connectionString)
     {
         try
         {
@@ -183,7 +209,7 @@ public class MigrationUtils
         }
     }
     
-    public static async void PopulateSubscriptionsTable(String pathToCSV,String connectionString)
+    private static async void PopulateSubscriptionTable(String pathToCSV,String connectionString)
     {
         try
         {
@@ -240,6 +266,59 @@ public class MigrationUtils
         catch (Exception ex)
         {
             Console.WriteLine("An error occurred while inserting data into the database: " + ex.Message);
+        }
+    }
+
+    private static void PopulateSegmentTable(List<Segment> segments, string connectionString)
+    {
+        using (var connection = new NpgsqlConnection(connectionString))
+        {
+            try
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    using (var command = new NpgsqlCommand())
+                    {
+                        command.Connection = connection;
+                        command.Transaction = transaction;
+                        command.CommandText =
+                            "INSERT INTO Segments (segment_id, origin_city_id, destination_city_id) VALUES (@segment_id, @origin_city_id, @destination_city_id)";
+                        foreach (Segment segment in segments)
+                        {
+                            command.Parameters.Clear();
+                            command.Parameters.AddWithValue("@segment_id", segment.SegmentId);
+                            command.Parameters.AddWithValue("@origin_city_id", segment.OriginCityId);
+                            command.Parameters.AddWithValue("@destination_city_id", segment.DestinationCityId);
+                            command.ExecuteNonQuery();
+                        }
+                    }
+
+                    transaction.Commit();
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                Console.WriteLine("An error occurred while inserting segments into the database:");
+                Console.WriteLine(ex.ToString());
+                throw; // rethrow the exception to the caller
+            }
+            finally
+            {
+                connection.Close();
+            }
+        }
+    }
+    
+    private static void AddForeignKeyConstraintToRoutesTable(string connectionString) {
+        using (var connection = new NpgsqlConnection(connectionString)) {
+            connection.Open();
+            using (var command = new NpgsqlCommand()) {
+                command.Connection = connection;
+                command.CommandText = "ALTER TABLE routes ADD CONSTRAINT fk_routes_segment_id FOREIGN KEY (segment_id) REFERENCES Segments (segment_id)";
+                command.ExecuteNonQuery();
+            }
+            connection.Close();
         }
     }
 }
